@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-was
+  namespace: test
+spec:
+  selector:
+    name: test-was
+  ports:
+  - port: 8280
+    targetPort: 8280
+  type: ClusterIP
