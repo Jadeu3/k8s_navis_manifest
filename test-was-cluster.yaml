@@ -1,0 +1,96 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-was
+  namespace: test
+spec:
+  selector:
+    matchLabels:
+      name: test-was
+  replicas: 1
+  strategy:
+    type: Recreate #RollingUpdate  #Recreate
+  minReadySeconds: 10
+  revisionHistoryLimit: 1
+  template:
+    metadata:
+      labels:
+        name: test-was
+    spec:
+      #securityContext:
+      #  runAsUser: 1000
+      #  runAsGroup: 1000
+      #  fsGroup: 1000
+      containers:
+      - name: test-was
+        image: 107227711957.dkr.ecr.ap-northeast-2.amazonaws.com/lena-cluster:non-root-test
+        imagePullPolicy: Always
+        #securityContext:
+        #  runAsUser: 2100
+        #livenessProbe:
+        #  httpGet:
+        #    path: /index.jsp
+        #    port: 8280
+        #  initialDelaySeconds: 20
+        #  periodSeconds: 5
+        #readinessProbe:
+        #  httpGet:
+        #    path: /index.jsp
+        #    port: 8280
+        #  initialDelaySeconds: 5
+        #  periodSeconds: 3
+        ports:
+        - containerPort: 8280
+        envFrom:
+        - configMapRef:
+            name: test-was
+        volumeMounts:
+        - name: webapps
+          mountPath: /sorc001
+        - name: logs
+          mountPath: /usr/local/lena/servers/appServer/logs
+        #env:
+        #- name: NODE_IP
+        #  valueFrom:
+        #    fieldRef:
+        #      fieldPath: status.hostIP
+        #- name: NODE_NAME
+        #  valueFrom:
+        #    fieldRef:
+        #      fieldPath: spec.nodeName
+      volumes:
+        - name: webapps
+          nfs:
+            server: fs-d0a8a7b1.efs.ap-northeast-2.amazonaws.com
+            path: /test-app/apps
+        - name: logs
+          nfs:
+            server: fs-d0a8a7b1.efs.ap-northeast-2.amazonaws.com
+            path: /test-log
+      terminationGracePeriodSeconds: 0
+
+---
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-was
+  namespace: test
+data:
+  LENA_MANAGER_ADDRESS: "172.31.5.128:7700"
+  LENA_MANAGER_MONITORING_PORT: "16100"
+  LENA_MANAGER_KEY: "[key from manager1]"
+#  LENA_MANAGER_2ND_ADDRESS: "172.31.15.75:7700"  
+#  LENA_MANAGER_2ND_UDP: "16100"  
+#  LENA_MANAGER_2ND_KEY: "[key from manager2]"
+  LENA_CONFIG_TEMPLATE_DOWNLOAD: "Y"
+  LENA_CONFIG_TEMPLATE_ID: "test-was"
+  LENA_LICENSE_DOWNLOAD_URL: "manager"
+  LENA_CONTRACT_CODE: "[contract code from LENA"
+  LENA_SERVICE_PORT: "8280"
+  JAVA_DOMAIN_CACHE_TTL: "3"
+  LENA_LOG_OUTPUT_DIR: "/usr/local/lena/servers/appServer/logs/`hostname`/"
+#  With Deployment Setting(env NODE_IP or NODE_NAME)
+#  LENA_LOG_OUTPUT_DIR: "/usr/local/lena/servers/appServer/logs/`hostname`/$NODE_NAME/"
+#  LENA_USER: "lena"
