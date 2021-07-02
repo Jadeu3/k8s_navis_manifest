@@ -1,0 +1,79 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: lena-session
+  namespace: test
+spec:
+  selector:
+    matchLabels:
+      name: lena-session
+  serviceName: lena-session
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        name: lena-session
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - session
+            topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: lena-session
+        #image: 107227711957.dkr.ecr.ap-northeast-2.amazonaws.com/lena-session:latest
+        #image: docker.io/lenasupport/lena-session:1.5.0.0-centos7-jdk8-openjdk
+        image: 107227711957.dkr.ecr.ap-northeast-2.amazonaws.com/lena-session:non-root-test
+        imagePullPolicy: Always
+        readinessProbe:
+          exec:
+            command:
+            - /usr/local/lena/servers/sessionServer/health.sh
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command:
+            - /usr/local/lena/servers/sessionServer/health.sh
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        ports:
+        - containerPort: 5180
+        envFrom:
+        - configMapRef:
+            name: lena-session
+        tty: true
+        volumeMounts:
+        - name: logs
+          mountPath: /usr/local/lena/servers/sessionServer/logs
+      volumes:
+      - name: logs
+        nfs:
+          server: fs-d0a8a7b1.efs.ap-northeast-2.amazonaws.com
+          path: /test-log
+      terminationGracePeriodSeconds: 0
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lena-session
+  namespace: test
+data:
+  LENA_MANAGER_ADDRESS: "lena-manager.test.svc.cluster.local:7700"
+  LENA_MANAGER_MONITORING_PORT: "16100"
+  LENA_MANAGER_KEY: "ZUln4ys15IZvLbRSOE8S0lSrQ1nIAIWe%2Fj1VJVOJpjaeFKcfuF3x3q4hxvTzDLSIcBb2D1Bj93IkD7LXXCEv8Q%3D%3D"
+  LENA_CONFIG_TEMPLATE_DOWNLOAD: "Y"
+  LENA_CONFIG_TEMPLATE_ID: "test-session"
+  LENA_SESSION_0_ADDRESS: "lena-session-0.lena-session.test.svc.cluster.local:5180"
+  LENA_SESSION_1_ADDRESS: "lena-session-1.lena-session.test.svc.cluster.local:5180"
+  LENA_USER: "lena"
+  LOG_OUTPUT_TYPE: "file"
+
+---
