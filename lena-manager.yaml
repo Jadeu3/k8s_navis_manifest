@@ -1,0 +1,81 @@
+---
+apiVersion: apps/v1
+#apiVersion: extensions/v1beta1
+kind: StatefulSet
+metadata:
+  name: lena-manager
+  namespace: test
+spec:
+  selector:
+    matchLabels:
+      name: lena-manager
+  serviceName: lena-manager
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: lena-manager
+    spec:
+      #securityContext:
+      #  runAsUser: 1000
+      #  runAsGroup: 1000
+      #  fsGroup: 1000
+      containers:
+      - name: lena-manager
+        image: 107227711957.dkr.ecr.ap-northeast-2.amazonaws.com/lena-manager:non-root-test
+        #image: docker.io/lenacloud/lena-manager:1.5.0.0-centos7-jdk8-openjdk
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 7700
+        #livenessProbe:
+        #  httpGet:
+        #    path: /lena
+        #    port: 7700
+        #  initialDelaySeconds: 60
+        #  periodSeconds: 10
+        envFrom:
+        - configMapRef:
+            name: lena-manager
+        volumeMounts:
+        - name: lena-manager-repository
+          mountPath: /usr/local/lena/repository
+      volumes:
+        - name: lena-manager-repository
+          nfs:
+            server: fs-d0a8a7b1.efs.ap-northeast-2.amazonaws.com
+            path: /lena-manager-repository-non-root-test/lena-manager-repository-test
+      terminationGracePeriodSeconds: 0
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lena-manager
+  namespace: test
+data:
+  LENA_MANAGER_DOMAIN_ENABLED: "Y"
+  LENA_MANAGER_ADDRESS: "lena-manager.test.svc.cluster.local:7700"
+  LENA_MANAGER_MONITORING_PORT: "16100"
+  LENA_USER: "lena"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lena-manager
+  namespace: test
+spec:
+  selector:
+    name: lena-manager
+  ports:
+  - name: service
+    protocol: TCP
+    port: 7700
+    targetPort: 7700
+    nodePort: 30990
+  - name: monitoring
+    protocol: UDP
+    port: 16100
+    targetPort: 16100
+  type: NodePort
+    
